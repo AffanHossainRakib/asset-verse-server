@@ -5,12 +5,12 @@ const findUserByEmail = async (email) => {
   return userCollection.findOne({ email: email.toLowerCase() });
 };
 
-const createUser = async (userDocument) => {
+const createANewUser = async (userDocument) => {
   const userCollection = await getUserCollection();
   return userCollection.insertOne(userDocument);
 };
 
 module.exports = {
   findUserByEmail,
-  createUser,
+  createANewUser,
 };

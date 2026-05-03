@@ -1,6 +1,6 @@
 const express = require("express");
-const { createUser } = require("../controllers/user.controller");
 const verifyFirebaseToken = require("../middlewares/verifyFirebaseToken");
+const { createUser } = require("../controllers/user.controller");
 
 const router = express.Router();
 

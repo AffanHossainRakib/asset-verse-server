@@ -1,7 +1,7 @@
 const admin = require("../config/firebaseAdmin");
-const { createUser, findUserByEmail } = require("../models/user.model");
+const { findUserByEmail, createANewUser } = require("../models/user.model");
 
-const createUser_v1 = async (req, res) => {
+const createUser = async (req, res) => {
   const { name, email, dateOfBirth, role, companyName, companyLogo } = req.body;
   const decodedToken = req.firebaseUser;
 
@@ -71,9 +71,7 @@ const createUser_v1 = async (req, res) => {
       };
     }
 
-    // Employee-specific fields can be added here if needed
-
-    const result = await createUser(userDocument);
+    const result = await createANewUser(userDocument);
 
     return res.status(201).json({
       success: true,
@@ -106,13 +104,4 @@ const createUser_v1 = async (req, res) => {
   }
 };
 
-// Legacy HR-only endpoint (kept for backward compatibility)
-const createHrUser = async (req, res) => {
-  const reqBody = { ...req.body, role: "hr" };
-  return createUser_v1({ body: reqBody }, res);
-};
-
-module.exports = {
-  createUser: createUser_v1,
-  createHrUser,
-};
+module.exports = { createUser };
