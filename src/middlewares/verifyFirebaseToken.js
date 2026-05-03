@@ -2,28 +2,32 @@ const admin = require("../config/firebaseAdmin");
 
 const verifyFirebaseToken = async (req, res, next) => {
   const authHeader = req.headers.authorization || "";
-  const bearerToken = authHeader.startsWith("Bearer ")
-    ? authHeader.slice(7).trim()
-    : null;
-  const bodyToken = req.body?.idToken;
-  const idToken = bearerToken || bodyToken;
 
-  if (!idToken) {
+  if (!authHeader.toLowerCase().startsWith("bearer ")) {
     return res.status(401).json({
       success: false,
-      message: "Missing Firebase auth token.",
+      message: "Missing or malformed Authorization header.",
     });
   }
 
+  const idToken = authHeader.slice(7).trim();
+
   try {
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    req.firebaseUser = decodedToken;
+    req.firebaseUser = await admin.auth().verifyIdToken(idToken);
     return next();
   } catch (error) {
-    return res.status(403).json({
-      success: false,
-      message: "Invalid or expired Firebase auth token.",
-    });
+    console.warn(
+      "Firebase token verification failed:",
+      error.code,
+      error.message,
+    );
+
+    const message =
+      error.code === "auth/id-token-expired"
+        ? "Firebase auth token has expired."
+        : "Invalid Firebase auth token.";
+
+    return res.status(401).json({ success: false, message });
   }
 };
 
