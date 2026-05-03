@@ -60,6 +60,14 @@ const initCollections = async () => {
     try {
       await client.connect();
     } catch (error) {
+      console.error("MongoDB connection failed:", {
+        name: error?.name,
+        code: error?.code,
+        errno: error?.errno,
+        syscall: error?.syscall,
+        message: error?.message,
+      });
+
       const isSrvRefused =
         error &&
         error.code === "ECONNREFUSED" &&
@@ -96,7 +104,6 @@ const initCollections = async () => {
 
 const getUserCollection = async () => {
   await initCollections();
-
   return userCollection;
 };
 

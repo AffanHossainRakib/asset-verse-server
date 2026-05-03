@@ -1,5 +1,12 @@
 const admin = require("../config/firebaseAdmin");
-const { findUserByEmail, createANewUser } = require("../models/user.model");
+const {
+  findUserByEmail,
+  createANewUser,
+  findUsers,
+  updateUserById,
+} = require("../models/user.model");
+
+const allowedRoles = ["hr", "employee"];
 
 const createUser = async (req, res) => {
   const { name, email, dateOfBirth, role, companyName, companyLogo } = req.body;
@@ -104,4 +111,98 @@ const createUser = async (req, res) => {
   }
 };
 
-module.exports = { createUser };
+const getCurrentUserRole = async (req, res) => {
+  const decodedToken = req.firebaseUser;
+
+  if (!decodedToken?.email) {
+    return res.status(401).json({
+      success: false,
+      message: "Missing authenticated user information.",
+    });
+  }
+
+  try {
+    const user = await findUserByEmail(decodedToken.email);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User profile not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      role: user.role || null,
+      data: {
+        _id: user._id,
+        email: user.email,
+        role: user.role || null,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error?.message || "Unable to fetch user role.",
+    });
+  }
+};
+
+const getUsers = async (req, res) => {
+  try {
+    const users = await findUsers();
+
+    return res.status(200).json({
+      success: true,
+      users,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error?.message || "Unable to fetch users.",
+    });
+  }
+};
+
+const updateUserRole = async (req, res) => {
+  const { id } = req.params;
+  const { role } = req.body;
+
+  if (!role || !allowedRoles.includes(role)) {
+    return res.status(400).json({
+      success: false,
+      message: `Role must be one of: ${allowedRoles.join(", ")}.`,
+    });
+  }
+
+  try {
+    const result = await updateUserById(id, {
+      role,
+      updatedAt: new Date().toISOString(),
+    });
+
+    if (!result.matchedCount) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "User role updated successfully.",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error?.message || "Unable to update user role.",
+    });
+  }
+};
+
+module.exports = {
+  createUser,
+  getCurrentUserRole,
+  getUsers,
+  updateUserRole,
+};
