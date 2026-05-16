@@ -10,7 +10,16 @@ const {
 const allowedRoles = ["hr", "employee"];
 
 const createUser = async (req, res) => {
-  const { name, email, dateOfBirth, role, companyName, companyLogo } = req.body;
+  const {
+    name,
+    email,
+    dateOfBirth,
+    role,
+    companyName,
+    companyLogo,
+    profileImage,
+  } = req.body;
+
   const decodedToken = req.firebaseUser;
 
   // Validate common fields
@@ -62,6 +71,7 @@ const createUser = async (req, res) => {
       email: normalizedEmail,
       role,
       dateOfBirth,
+      profileImage,
       createdAt: now,
       updatedAt: now,
       firebaseUid: decodedToken.uid,
