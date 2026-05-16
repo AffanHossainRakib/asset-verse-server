@@ -75,23 +75,14 @@ const createNewAsset = async (req, res) => {
       });
     }
 
-    const {
-      productName,
-      productImage,
-      productType,
-      productQuantity,
-      condition = "new",
-      isReturnable = true,
-      serialNumber,
-      purchaseDate,
-      purchasePrice,
-      description,
-    } = req.body;
+    const { productName, productImage, productType, productQuantity } =
+      req.body;
 
-    if (!productName || !productType || !productQuantity) {
+    if (!productName || !productType || !productQuantity || !productImage) {
       return res.status(400).json({
         success: false,
-        message: "productName, productType, and productQuantity are required.",
+        message:
+          "productName, productType, productQuantity, and productImage are required.",
       });
     }
 
@@ -106,21 +97,14 @@ const createNewAsset = async (req, res) => {
 
     const now = new Date().toISOString();
     const assetDocument = {
-      productName,
-      productImage: productImage || "",
+      productName: productName.trim(),
+      productImage: productImage.trim(),
       productType,
       productQuantity: quantity,
       availableQuantity: quantity,
-      condition,
-      isReturnable: Boolean(isReturnable),
-      serialNumber: serialNumber || "",
-      purchaseDate: purchaseDate || "",
-      purchasePrice: purchasePrice || "",
-      description: description || "",
       hrEmail: hrProfile.email,
       companyName: hrProfile.companyName,
-      status: "active",
-      dateAdded: now,
+      dateAdded: new Date(now),
       createdAt: now,
       updatedAt: now,
     };
