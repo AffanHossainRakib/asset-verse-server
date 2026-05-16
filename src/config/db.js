@@ -40,6 +40,12 @@ const configureDnsForAtlasSrv = () => {
 let client;
 let dbConnected = false;
 let userCollection;
+let assetCollection;
+let requestCollection;
+let assignedAssetCollection;
+let packageCollection;
+let subscriptionCollection;
+let companyCollection;
 let initPromise = null;
 
 const initCollections = async () => {
@@ -88,6 +94,12 @@ const initCollections = async () => {
 
     const db = client.db("asset_verse_db");
     userCollection = db.collection("users");
+    assetCollection = db.collection("assets");
+    requestCollection = db.collection("requests");
+    assignedAssetCollection = db.collection("assignedAssets");
+    packageCollection = db.collection("packages");
+    subscriptionCollection = db.collection("subscriptions");
+    companyCollection = db.collection("companies");
     dbConnected = true;
   })();
 
@@ -107,6 +119,42 @@ const getUserCollection = async () => {
   return userCollection;
 };
 
+const getAssetCollection = async () => {
+  await initCollections();
+  return assetCollection;
+};
+
+const getRequestCollection = async () => {
+  await initCollections();
+  return requestCollection;
+};
+
+const getAssignedAssetCollection = async () => {
+  await initCollections();
+  return assignedAssetCollection;
+};
+
+const getPackageCollection = async () => {
+  await initCollections();
+  return packageCollection;
+};
+
+const getSubscriptionCollection = async () => {
+  await initCollections();
+  return subscriptionCollection;
+};
+
+const getCompanyCollection = async () => {
+  await initCollections();
+  return companyCollection;
+};
+
 module.exports = {
   getUserCollection,
+  getAssetCollection,
+  getRequestCollection,
+  getAssignedAssetCollection,
+  getPackageCollection,
+  getSubscriptionCollection,
+  getCompanyCollection,
 };

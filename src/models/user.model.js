@@ -11,9 +11,9 @@ const createANewUser = async (userDocument) => {
   return userCollection.insertOne(userDocument);
 };
 
-const findUsers = async () => {
+const findUsers = async (query = {}) => {
   const userCollection = await getUserCollection();
-  return userCollection.find({}).sort({ createdAt: -1 }).toArray();
+  return userCollection.find(query).sort({ createdAt: -1 }).toArray();
 };
 
 const updateUserById = async (userId, updateDoc) => {
@@ -24,9 +24,18 @@ const updateUserById = async (userId, updateDoc) => {
   );
 };
 
+const updateUserByEmail = async (email, updateDoc) => {
+  const userCollection = await getUserCollection();
+  return userCollection.updateOne(
+    { email: email.toLowerCase() },
+    { $set: updateDoc },
+  );
+};
+
 module.exports = {
   findUserByEmail,
   createANewUser,
   findUsers,
   updateUserById,
+  updateUserByEmail,
 };

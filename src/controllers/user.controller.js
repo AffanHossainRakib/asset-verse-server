@@ -4,6 +4,7 @@ const {
   createANewUser,
   findUsers,
   updateUserById,
+  updateUserByEmail,
 } = require("../models/user.model");
 
 const allowedRoles = ["hr", "employee"];
@@ -150,7 +151,21 @@ const getCurrentUserRole = async (req, res) => {
 
 const getUsers = async (req, res) => {
   try {
-    const users = await findUsers();
+    const { role, search } = req.query;
+    const query = {};
+
+    if (role) {
+      query.role = role;
+    }
+
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const users = await findUsers(query);
 
     return res.status(200).json({
       success: true,
@@ -200,9 +215,89 @@ const updateUserRole = async (req, res) => {
   }
 };
 
+const getCurrentUser = async (req, res) => {
+  const decodedToken = req.firebaseUser;
+
+  if (!decodedToken?.email) {
+    return res.status(401).json({
+      success: false,
+      message: "Missing authenticated user information.",
+    });
+  }
+
+  try {
+    const user = await findUserByEmail(decodedToken.email);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User profile not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error?.message || "Unable to fetch user profile.",
+    });
+  }
+};
+
+const updateCurrentUser = async (req, res) => {
+  const decodedToken = req.firebaseUser;
+
+  if (!decodedToken?.email) {
+    return res.status(401).json({
+      success: false,
+      message: "Missing authenticated user information.",
+    });
+  }
+
+  try {
+    const { name, phone, profileImage, dateOfBirth, companyName, companyLogo } =
+      req.body;
+
+    const updateDoc = {
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (name !== undefined) updateDoc.name = name;
+    if (phone !== undefined) updateDoc.phone = phone;
+    if (profileImage !== undefined) updateDoc.profileImage = profileImage;
+    if (dateOfBirth !== undefined) updateDoc.dateOfBirth = dateOfBirth;
+    if (companyName !== undefined) updateDoc.companyName = companyName;
+    if (companyLogo !== undefined) updateDoc.companyLogo = companyLogo;
+
+    const result = await updateUserByEmail(decodedToken.email, updateDoc);
+
+    if (!result.matchedCount) {
+      return res.status(404).json({
+        success: false,
+        message: "User profile not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully.",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error?.message || "Unable to update profile.",
+    });
+  }
+};
+
 module.exports = {
   createUser,
   getCurrentUserRole,
   getUsers,
   updateUserRole,
+  getCurrentUser,
+  updateCurrentUser,
 };
