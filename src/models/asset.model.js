@@ -46,6 +46,11 @@ const updateAssetById = async (assetId, updateDoc) => {
   );
 };
 
+const deleteAssetById = async (assetId) => {
+  const assetCollection = await getAssetCollection();
+  return assetCollection.deleteOne({ _id: new ObjectId(assetId) });
+};
+
 module.exports = {
   createAsset,
   findAssetsByCompany,
@@ -53,4 +58,5 @@ module.exports = {
   findAssetById,
   findAssetsByIds,
   updateAssetById,
+  deleteAssetById,
 };

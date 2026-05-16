@@ -5,6 +5,7 @@ const {
   findActiveAssets,
   findAssetById,
   updateAssetById,
+  deleteAssetById,
 } = require("../models/asset.model");
 
 const getHrProfile = async (req) => {
@@ -203,20 +204,24 @@ const deleteAsset = async (req, res) => {
       });
     }
 
-    const result = await updateAssetById(id, {
-      status: "retired",
-      updatedAt: new Date().toISOString(),
-    });
+    const result = await deleteAssetById(id);
+
+    if (!result.deletedCount) {
+      return res.status(500).json({
+        success: false,
+        message: "Unable to delete asset.",
+      });
+    }
 
     return res.status(200).json({
       success: true,
-      message: "Asset retired successfully.",
+      message: "Asset deleted successfully.",
       data: result,
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: error?.message || "Unable to retire asset.",
+      message: error?.message || "Unable to delete asset.",
     });
   }
 };
