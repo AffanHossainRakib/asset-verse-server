@@ -15,6 +15,10 @@ const {
   deleteAssignedAssets,
   findAssignedAssets,
 } = require("../models/assignedAsset.model");
+const {
+  createAffiliation,
+  findAffiliationByEmailAndCompany,
+} = require("../models/employeeAffiliation.model");
 
 const getUserProfile = async (req) => {
   const email = req.firebaseUser?.email?.toLowerCase();
@@ -200,6 +204,26 @@ const approveRequest = async (req, res) => {
             productType: request.assetType,
           },
         ];
+
+    // Create employee affiliation with company if it doesn't exist
+    const existingAffiliation = await findAffiliationByEmailAndCompany(
+      request.requesterEmail,
+      request.companyName,
+    );
+
+    if (!existingAffiliation) {
+      await createAffiliation({
+        employeeEmail: request.requesterEmail,
+        employeeName: request.requesterName,
+        hrEmail: userProfile.email,
+        companyName: request.companyName,
+        companyLogo: userProfile.companyLogo || "",
+        affiliationDate: new Date().toISOString(),
+        status: "active",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    }
 
     for (const item of items) {
       const asset = await findAssetById(item.assetId);
