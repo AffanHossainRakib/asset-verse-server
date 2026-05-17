@@ -106,12 +106,10 @@ const verifyCheckoutSession = async (req, res) => {
     );
 
     if (!selectedPackage) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "Package not found for this session.",
-        });
+      return res.status(404).json({
+        success: false,
+        message: "Package not found for this session.",
+      });
     }
 
     const now = new Date().toISOString();
@@ -121,21 +119,33 @@ const verifyCheckoutSession = async (req, res) => {
       updatedAt: now,
     });
 
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: "Subscription updated.",
-        data: { package: selectedPackage.name },
+    // record payment in payments collection
+    try {
+      const { createPayment } = require("../models/payment.model");
+      await createPayment({
+        email: hrEmail.toLowerCase(),
+        packageId: selectedPackage._id.toString(),
+        packageName: selectedPackage.name,
+        amount: selectedPackage.price,
+        sessionId: session.id,
+        paymentIntent: session.payment_intent || null,
+        createdAt: now,
       });
+    } catch (recErr) {
+      console.error("Failed to record payment:", recErr);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Subscription updated.",
+      data: { package: selectedPackage.name },
+    });
   } catch (error) {
     console.error("verifyCheckoutSession error:", error);
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: error?.message || "Unable to verify checkout session.",
-      });
+    return res.status(500).json({
+      success: false,
+      message: error?.message || "Unable to verify checkout session.",
+    });
   }
 };
 

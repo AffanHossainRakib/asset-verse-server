@@ -47,6 +47,7 @@ let packageCollection;
 let subscriptionCollection;
 let companyCollection;
 let employeeAffiliationCollection;
+let paymentCollection;
 let initPromise = null;
 
 const initCollections = async () => {
@@ -102,6 +103,7 @@ const initCollections = async () => {
     subscriptionCollection = db.collection("subscriptions");
     companyCollection = db.collection("companies");
     employeeAffiliationCollection = db.collection("employeeAffiliations");
+    paymentCollection = db.collection("payments");
     dbConnected = true;
   })();
 
@@ -156,6 +158,11 @@ const getEmployeeAffiliationCollection = async () => {
   return employeeAffiliationCollection;
 };
 
+const getPaymentCollection = async () => {
+  await initCollections();
+  return paymentCollection;
+};
+
 module.exports = {
   getUserCollection,
   getAssetCollection,
@@ -165,4 +172,5 @@ module.exports = {
   getSubscriptionCollection,
   getCompanyCollection,
   getEmployeeAffiliationCollection,
+  getPaymentCollection,
 };
