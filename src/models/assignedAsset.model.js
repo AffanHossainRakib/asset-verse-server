@@ -1,4 +1,5 @@
 const { getAssignedAssetCollection } = require("../config/db");
+const { ObjectId } = require("mongodb");
 
 const createAssignedAsset = async (assignmentDocument) => {
   const assignedAssetCollection = await getAssignedAssetCollection();
@@ -18,8 +19,23 @@ const findAssignedAssets = async (query = {}) => {
     .toArray();
 };
 
+const findAssignedAssetById = async (id) => {
+  const assignedAssetCollection = await getAssignedAssetCollection();
+  return assignedAssetCollection.findOne({ _id: new ObjectId(id) });
+};
+
+const updateAssignedAssetById = async (id, updateDoc) => {
+  const assignedAssetCollection = await getAssignedAssetCollection();
+  return assignedAssetCollection.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: updateDoc },
+  );
+};
+
 module.exports = {
   createAssignedAsset,
   deleteAssignedAssets,
   findAssignedAssets,
+  findAssignedAssetById,
+  updateAssignedAssetById,
 };

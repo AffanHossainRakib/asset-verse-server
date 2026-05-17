@@ -1,3 +1,4 @@
+const { ObjectId } = require("mongodb");
 const { findUserByEmail, updateUserByEmail } = require("../models/user.model");
 const {
   findAssetsByIds,
@@ -14,6 +15,8 @@ const {
   createAssignedAsset,
   deleteAssignedAssets,
   findAssignedAssets,
+  findAssignedAssetById,
+  updateAssignedAssetById,
 } = require("../models/assignedAsset.model");
 const {
   createAffiliation,
@@ -286,11 +289,15 @@ const approveRequest = async (req, res) => {
         requestId: id,
         assetId: item.assetId,
         assetName: item.productName,
+        assetImage: asset.productImage || "",
         assetType: item.productType,
         employeeEmail: request.requesterEmail,
         employeeName: request.requesterName,
         hrEmail: request.hrEmail,
         companyName: request.companyName,
+        requestDate: request.requestDate || now,
+        approvalDate: now,
+        returnDate: null,
         assignmentDate: new Date().toISOString(),
         status: "assigned",
         createdAt: new Date().toISOString(),
@@ -511,15 +518,132 @@ const getAssignedAssetsForCurrentUser = async (req, res) => {
         : { employeeEmail: userProfile.email };
 
     const assignedAssets = await findAssignedAssets(query);
+    const requestIds = assignedAssets
+      .map((item) => item.requestId)
+      .filter(Boolean);
+    const assetIds = assignedAssets.map((item) => item.assetId).filter(Boolean);
+
+    const requests = requestIds.length
+      ? await findRequests({
+          _id: { $in: requestIds.map((id) => new ObjectId(id)) },
+        })
+      : [];
+
+    const assets = assetIds.length
+      ? await Promise.all(assetIds.map((assetId) => findAssetById(assetId)))
+      : [];
+
+    const requestMap = new Map(
+      requests.map((request) => [request._id.toString(), request]),
+    );
+    const assetMap = new Map(
+      assets.filter(Boolean).map((asset) => [asset._id.toString(), asset]),
+    );
+
+    const enrichedAssignedAssets = assignedAssets.map((assignedAsset) => {
+      const request = assignedAsset.requestId
+        ? requestMap.get(assignedAsset.requestId.toString())
+        : null;
+      const asset = assignedAsset.assetId
+        ? assetMap.get(assignedAsset.assetId.toString())
+        : null;
+
+      return {
+        ...assignedAsset,
+        assetImage: assignedAsset.assetImage || asset?.productImage || "",
+        requestDate:
+          assignedAsset.requestDate ||
+          request?.requestDate ||
+          assignedAsset.createdAt ||
+          null,
+        approvalDate:
+          assignedAsset.approvalDate ||
+          request?.approvalDate ||
+          assignedAsset.assignmentDate ||
+          null,
+        returnDate: assignedAsset.returnDate || null,
+        status:
+          assignedAsset.status ||
+          (request?.requestStatus === "approved"
+            ? "assigned"
+            : request?.requestStatus),
+      };
+    });
 
     return res.status(200).json({
       success: true,
-      data: assignedAssets,
+      data: enrichedAssignedAssets,
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
       message: error?.message || "Unable to fetch assigned assets.",
+    });
+  }
+};
+
+const returnAssignedAsset = async (req, res) => {
+  try {
+    const userProfile = await getUserProfile(req);
+
+    if (!userProfile || userProfile.role !== "employee") {
+      return res.status(403).json({
+        success: false,
+        message: "Employee access required.",
+      });
+    }
+
+    const { id } = req.params;
+    const assignedAsset = await findAssignedAssetById(id);
+
+    if (!assignedAsset) {
+      return res.status(404).json({
+        success: false,
+        message: "Assigned asset not found.",
+      });
+    }
+
+    if (
+      assignedAsset.employeeEmail?.toLowerCase() !==
+      userProfile.email?.toLowerCase()
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only return your own assets.",
+      });
+    }
+
+    if (assignedAsset.status === "returned") {
+      return res.status(400).json({
+        success: false,
+        message: "Asset has already been returned.",
+      });
+    }
+
+    const asset = await findAssetById(assignedAsset.assetId);
+    const now = new Date().toISOString();
+
+    if (asset) {
+      await updateAssetById(assignedAsset.assetId, {
+        availableQuantity: (asset.availableQuantity || 0) + 1,
+        updatedAt: now,
+      });
+    }
+
+    await updateAssignedAssetById(id, {
+      status: "returned",
+      returnDate: now,
+      updatedAt: now,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Asset returned successfully.",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error?.message || "Unable to return assigned asset.",
     });
   }
 };
@@ -531,4 +655,5 @@ module.exports = {
   rejectRequest,
   undoRequest,
   getAssignedAssetsForCurrentUser,
+  returnAssignedAsset,
 };
