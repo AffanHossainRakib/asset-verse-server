@@ -18,6 +18,7 @@ const {
 const {
   createAffiliation,
   findAffiliationByEmailAndCompany,
+  updateAffiliationById,
 } = require("../models/employeeAffiliation.model");
 
 const getUserProfile = async (req) => {
@@ -205,7 +206,7 @@ const approveRequest = async (req, res) => {
           },
         ];
 
-    // Create employee affiliation with company if it doesn't exist
+    const now = new Date().toISOString();
     const existingAffiliation = await findAffiliationByEmailAndCompany(
       request.requesterEmail,
       request.companyName,
@@ -218,10 +219,22 @@ const approveRequest = async (req, res) => {
         hrEmail: userProfile.email,
         companyName: request.companyName,
         companyLogo: userProfile.companyLogo || "",
-        affiliationDate: new Date().toISOString(),
+        affiliationDate: now,
         status: "active",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: now,
+        updatedAt: now,
+      });
+    } else if (existingAffiliation.status !== "active") {
+      await updateAffiliationById(existingAffiliation._id.toString(), {
+        employeeEmail: request.requesterEmail,
+        employeeName: request.requesterName,
+        hrEmail: userProfile.email,
+        companyName: request.companyName,
+        companyLogo:
+          userProfile.companyLogo || existingAffiliation.companyLogo || "",
+        affiliationDate: now,
+        status: "active",
+        updatedAt: now,
       });
     }
 

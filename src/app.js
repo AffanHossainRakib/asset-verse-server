@@ -6,6 +6,7 @@ const requestRoutes = require("./routes/request.route");
 const assignedAssetRoutes = require("./routes/assignedAsset.route");
 const packageRoutes = require("./routes/package.route");
 const subscriptionRoutes = require("./routes/subscription.route");
+const employeeAffiliationRoutes = require("./routes/employeeAffiliation.route");
 
 const app = express();
 
@@ -22,5 +23,6 @@ app.use("/api/requests", requestRoutes);
 app.use("/api/assigned-assets", assignedAssetRoutes);
 app.use("/api/packages", packageRoutes);
 app.use("/api/subscriptions", subscriptionRoutes);
+app.use("/api/employee-affiliations", employeeAffiliationRoutes);
 
 module.exports = app;
