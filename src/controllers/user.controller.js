@@ -6,6 +6,9 @@ const {
   updateUserById,
   updateUserByEmail,
 } = require("../models/user.model");
+const {
+  findAffiliationsByEmployeeEmail,
+} = require("../models/employeeAffiliation.model");
 
 const allowedRoles = ["hr", "employee"];
 
@@ -243,6 +246,14 @@ const getCurrentUser = async (req, res) => {
         success: false,
         message: "User profile not found.",
       });
+    }
+
+    // Attach current affiliations for convenience in the frontend
+    try {
+      const affiliations = await findAffiliationsByEmployeeEmail(user.email);
+      user.affiliations = affiliations || [];
+    } catch (affErr) {
+      user.affiliations = [];
     }
 
     return res.status(200).json({
