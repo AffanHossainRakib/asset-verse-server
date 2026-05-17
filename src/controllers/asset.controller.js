@@ -181,8 +181,43 @@ const updateAsset = async (req, res) => {
       });
     }
 
+    const hasProductQuantityUpdate = req.body.productQuantity !== undefined;
+    const nextProductQuantity = hasProductQuantityUpdate
+      ? Number(req.body.productQuantity)
+      : asset.productQuantity;
+
+    if (
+      hasProductQuantityUpdate &&
+      (!Number.isFinite(nextProductQuantity) || nextProductQuantity < 1)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "productQuantity must be a positive number.",
+      });
+    }
+
+    const assignedQuantity =
+      (asset.productQuantity ?? 0) - (asset.availableQuantity ?? 0);
+    const nextAvailableQuantity = hasProductQuantityUpdate
+      ? nextProductQuantity - assignedQuantity
+      : asset.availableQuantity;
+
+    if (nextAvailableQuantity < 0) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "productQuantity cannot be less than the number of already assigned assets.",
+      });
+    }
+
     const updateDoc = {
       ...req.body,
+      ...(hasProductQuantityUpdate
+        ? {
+            productQuantity: nextProductQuantity,
+            availableQuantity: nextAvailableQuantity,
+          }
+        : {}),
       updatedAt: new Date().toISOString(),
     };
 
