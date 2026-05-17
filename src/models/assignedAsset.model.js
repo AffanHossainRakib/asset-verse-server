@@ -5,6 +5,11 @@ const createAssignedAsset = async (assignmentDocument) => {
   return assignedAssetCollection.insertOne(assignmentDocument);
 };
 
+const deleteAssignedAssets = async (query = {}) => {
+  const assignedAssetCollection = await getAssignedAssetCollection();
+  return assignedAssetCollection.deleteMany(query);
+};
+
 const findAssignedAssets = async (query = {}) => {
   const assignedAssetCollection = await getAssignedAssetCollection();
   return assignedAssetCollection
@@ -15,5 +20,6 @@ const findAssignedAssets = async (query = {}) => {
 
 module.exports = {
   createAssignedAsset,
+  deleteAssignedAssets,
   findAssignedAssets,
 };

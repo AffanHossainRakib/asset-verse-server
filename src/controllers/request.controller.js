@@ -12,6 +12,7 @@ const {
 } = require("../models/request.model");
 const {
   createAssignedAsset,
+  deleteAssignedAssets,
   findAssignedAssets,
 } = require("../models/assignedAsset.model");
 
@@ -216,6 +217,7 @@ const approveRequest = async (req, res) => {
       });
 
       await createAssignedAsset({
+        requestId: id,
         assetId: item.assetId,
         assetName: item.productName,
         assetType: item.productType,
@@ -245,6 +247,134 @@ const approveRequest = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error?.message || "Unable to approve request.",
+    });
+  }
+};
+
+const undoRequest = async (req, res) => {
+  try {
+    const userProfile = await getUserProfile(req);
+
+    if (!userProfile || userProfile.role !== "hr") {
+      return res.status(403).json({
+        success: false,
+        message: "HR access required.",
+      });
+    }
+
+    const { id } = req.params;
+    const request = await findRequestById(id);
+
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: "Request not found.",
+      });
+    }
+
+    if (request.hrEmail !== userProfile.email) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only undo requests from your company.",
+      });
+    }
+
+    if (request.requestStatus === "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "Pending requests do not need to be undone.",
+      });
+    }
+
+    const items = request.assets
+      ? request.assets.map((a) => ({
+          assetId: a.assetId,
+          productName: a.productName,
+          productType: a.productType,
+        }))
+      : [
+          {
+            assetId: request.assetId,
+            productName: request.assetName,
+            productType: request.assetType,
+          },
+        ];
+
+    if (request.requestStatus === "approved") {
+      const deleteResult = await deleteAssignedAssets({
+        requestId: request._id.toString(),
+      });
+
+      const deletedCount = deleteResult.deletedCount || 0;
+
+      if (!deletedCount) {
+        // Fallback for older approvals that were created before requestId was stored.
+        const fallbackDeletes = [];
+
+        for (const item of items) {
+          const fallbackQuery = {
+            assetId: item.assetId,
+            employeeEmail: request.requesterEmail,
+            hrEmail: request.hrEmail,
+            companyName: request.companyName,
+            status: "assigned",
+          };
+
+          fallbackDeletes.push(await deleteAssignedAssets(fallbackQuery));
+        }
+
+        const fallbackDeletedCount = fallbackDeletes.reduce(
+          (total, result) => total + (result.deletedCount || 0),
+          0,
+        );
+
+        if (!fallbackDeletedCount) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Unable to locate assigned assets for this approved request.",
+          });
+        }
+
+        for (const item of items) {
+          const asset = await findAssetById(item.assetId);
+
+          if (asset) {
+            await updateAssetById(item.assetId, {
+              availableQuantity: (asset.availableQuantity || 0) + 1,
+              updatedAt: new Date().toISOString(),
+            });
+          }
+        }
+      } else {
+        for (const item of items) {
+          const asset = await findAssetById(item.assetId);
+
+          if (asset) {
+            await updateAssetById(item.assetId, {
+              availableQuantity: (asset.availableQuantity || 0) + 1,
+              updatedAt: new Date().toISOString(),
+            });
+          }
+        }
+      }
+    }
+
+    await updateRequestById(id, {
+      requestStatus: "pending",
+      approvalDate: null,
+      processedBy: null,
+      updatedAt: new Date().toISOString(),
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Request undone successfully.",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error?.message || "Unable to undo request.",
     });
   }
 };
@@ -333,5 +463,6 @@ module.exports = {
   createAssetRequest,
   approveRequest,
   rejectRequest,
+  undoRequest,
   getAssignedAssetsForCurrentUser,
 };
