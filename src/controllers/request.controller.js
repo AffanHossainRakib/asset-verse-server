@@ -101,7 +101,7 @@ const createAssetRequest = async (req, res) => {
     }
 
     const unavailableAsset = assets.find(
-      (asset) => asset.status !== "active" || asset.availableQuantity <= 0,
+      (asset) => asset.availableQuantity <= 0,
     );
 
     if (unavailableAsset) {
@@ -112,34 +112,35 @@ const createAssetRequest = async (req, res) => {
     }
 
     const now = new Date().toISOString();
-    const requestDocument = {
-      companyName,
-      hrEmail: assets[0].hrEmail,
-      requesterEmail: userProfile.email,
-      requesterName: userProfile.name,
-      reason: reason || "",
-      assets: assets.map((asset) => ({
-        assetId: asset._id,
-        productName: asset.productName,
-        productType: asset.productType,
-        companyName: asset.companyName,
-        hrEmail: asset.hrEmail,
-      })),
-      requestStatus: "pending",
-      requestDate: now,
-      createdAt: now,
-      updatedAt: now,
-    };
+    // Create a separate request document for each requested asset
+    const created = [];
 
-    const result = await createRequest(requestDocument);
+    for (const asset of assets) {
+      const requestDocument = {
+        assetId: asset._id,
+        assetName: asset.productName,
+        assetType: asset.productType,
+        requesterName: userProfile.name,
+        requesterEmail: userProfile.email,
+        hrEmail: asset.hrEmail,
+        companyName,
+        requestDate: now,
+        approvalDate: null,
+        requestStatus: "pending",
+        note: reason || "",
+        processedBy: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      const result = await createRequest(requestDocument);
+      created.push({ ...requestDocument, _id: result.insertedId });
+    }
 
     return res.status(201).json({
       success: true,
-      message: "Asset request submitted successfully.",
-      data: {
-        ...requestDocument,
-        _id: result.insertedId,
-      },
+      message: "Asset request(s) submitted successfully.",
+      data: created,
     });
   } catch (error) {
     return res.status(500).json({
@@ -184,7 +185,22 @@ const approveRequest = async (req, res) => {
       });
     }
 
-    for (const item of request.assets) {
+    // Support both legacy requests (with `assets` array) and new single-asset shape
+    const items = request.assets
+      ? request.assets.map((a) => ({
+          assetId: a.assetId,
+          productName: a.productName,
+          productType: a.productType,
+        }))
+      : [
+          {
+            assetId: request.assetId,
+            productName: request.assetName,
+            productType: request.assetType,
+          },
+        ];
+
+    for (const item of items) {
       const asset = await findAssetById(item.assetId);
 
       if (!asset || asset.availableQuantity <= 0) {
@@ -262,9 +278,9 @@ const rejectRequest = async (req, res) => {
     }
 
     const { reason = "" } = req.body;
-
     await updateRequestById(id, {
       requestStatus: "rejected",
+      approvalDate: null,
       rejectionReason: reason,
       processedBy: userProfile.email,
       updatedAt: new Date().toISOString(),

@@ -2,7 +2,7 @@ const { findUserByEmail } = require("../models/user.model");
 const {
   createAsset,
   findAssetsByCompany,
-  findActiveAssets,
+  findAvailableAssets,
   findAssetById,
   updateAssetById,
   deleteAssetById,
@@ -42,7 +42,16 @@ const getAssets = async (req, res) => {
       });
     }
 
-    if (profile.role === "hr") {
+    // Parse query params for pagination and search
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 0; // 0 means no limit
+    const search = req.query.search || "";
+    const productType = req.query.productType || "";
+    const companyQuery = req.query.companyName || null;
+
+    // If HR and no paging/search params provided, return full company assets
+    const noPaging = !req.query.page && !req.query.limit && !req.query.search;
+    if (profile.role === "hr" && noPaging) {
       const assets = await findAssetsByCompany(profile.companyName);
 
       return res.status(200).json({
@@ -51,11 +60,26 @@ const getAssets = async (req, res) => {
       });
     }
 
-    const assets = await findActiveAssets();
+    // For employees (and when paging/search requested), return paginated available assets
+    const pageSize = limit > 0 ? limit : profile.role === "hr" ? 0 : 10;
+    const skip = pageSize > 0 ? (page - 1) * pageSize : 0;
+
+    const filterCompany =
+      companyQuery || (profile.role !== "hr" ? profile.companyName : null);
+
+    const { data, total } = await findAvailableAssets({
+      companyName: filterCompany,
+      search: search || productType,
+      skip,
+      limit: pageSize,
+    });
 
     return res.status(200).json({
       success: true,
-      data: assets,
+      data,
+      total,
+      page: pageSize > 0 ? page : 1,
+      limit: pageSize,
     });
   } catch (error) {
     return res.status(500).json({
@@ -103,6 +127,7 @@ const createNewAsset = async (req, res) => {
       productType,
       productQuantity: quantity,
       availableQuantity: quantity,
+      status: "active",
       hrEmail: hrProfile.email,
       companyName: hrProfile.companyName,
       dateAdded: new Date(now),

@@ -14,12 +14,31 @@ const findAssetsByCompany = async (companyName) => {
     .toArray();
 };
 
-const findActiveAssets = async () => {
+const findAvailableAssets = async (options = {}) => {
+  const { companyName, search, skip = 0, limit = 0 } = options;
   const assetCollection = await getAssetCollection();
-  return assetCollection
-    .find({ status: "active" })
-    .sort({ createdAt: -1 })
-    .toArray();
+
+  const filter = { availableQuantity: { $gt: 0 } };
+
+  if (companyName) {
+    filter.companyName = companyName;
+  }
+
+  if (search) {
+    const q = new RegExp(String(search).trim(), "i");
+    filter.$or = [{ productName: q }, { productType: q }, { companyName: q }];
+  }
+
+  const total = await assetCollection.countDocuments(filter);
+
+  let cursor = assetCollection.find(filter).sort({ createdAt: -1 });
+
+  if (skip && skip > 0) cursor = cursor.skip(skip);
+  if (limit && limit > 0) cursor = cursor.limit(limit);
+
+  const data = await cursor.toArray();
+
+  return { data, total };
 };
 
 const findAssetById = async (assetId) => {
@@ -54,7 +73,7 @@ const deleteAssetById = async (assetId) => {
 module.exports = {
   createAsset,
   findAssetsByCompany,
-  findActiveAssets,
+  findAvailableAssets,
   findAssetById,
   findAssetsByIds,
   updateAssetById,
