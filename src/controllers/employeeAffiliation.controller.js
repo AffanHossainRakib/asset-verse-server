@@ -1,4 +1,4 @@
-const { findUserByEmail } = require("../models/user.model");
+const { findUserByEmail, updateUserByEmail } = require("../models/user.model");
 const { findAssignedAssets } = require("../models/assignedAsset.model");
 const {
   findAffiliationsByCompany,
@@ -80,7 +80,7 @@ const getCompanyEmployees = async (req, res) => {
       success: true,
       data: employeeRows,
       meta: {
-        usedEmployees: employeeRows.length,
+        usedEmployees: userProfile.currentEmployees ?? employeeRows.length,
         packageLimit: userProfile.packageLimit ?? 0,
         companyName: userProfile.companyName,
         companyLogo: userProfile.companyLogo || "",
@@ -127,9 +127,15 @@ const removeEmployeeFromCompany = async (req, res) => {
       });
     }
 
+    const now = new Date().toISOString();
     await updateAffiliationById(id, {
       status: "inactive",
-      updatedAt: new Date().toISOString(),
+      updatedAt: now,
+    });
+
+    await updateUserByEmail(userProfile.email, {
+      currentEmployees: Math.max((userProfile.currentEmployees || 1) - 1, 0),
+      updatedAt: now,
     });
 
     return res.status(200).json({

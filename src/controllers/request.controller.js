@@ -1,4 +1,4 @@
-const { findUserByEmail } = require("../models/user.model");
+const { findUserByEmail, updateUserByEmail } = require("../models/user.model");
 const {
   findAssetsByIds,
   findAssetById,
@@ -18,6 +18,7 @@ const {
 const {
   createAffiliation,
   findAffiliationByEmailAndCompany,
+  findAffiliationsByCompany,
   updateAffiliationById,
 } = require("../models/employeeAffiliation.model");
 
@@ -212,6 +213,26 @@ const approveRequest = async (req, res) => {
       request.companyName,
     );
 
+    // Enforce company package employee limit. Count active affiliations for the company
+    const activeAffiliations = await findAffiliationsByCompany(
+      request.companyName,
+    );
+    const activeCount = Array.isArray(activeAffiliations)
+      ? activeAffiliations.length
+      : 0;
+    const packageLimit = userProfile.packageLimit ?? 0;
+
+    // If creating a new affiliation or re-activating an inactive one, ensure limit not exceeded
+    const willIncreaseCount =
+      !existingAffiliation || existingAffiliation.status !== "active";
+
+    if (willIncreaseCount && packageLimit > 0 && activeCount >= packageLimit) {
+      return res.status(400).json({
+        success: false,
+        message: `Company package limit reached (${packageLimit} employees). Please upgrade the package to add more employees.`,
+      });
+    }
+
     if (!existingAffiliation) {
       await createAffiliation({
         employeeEmail: request.requesterEmail,
@@ -224,6 +245,10 @@ const approveRequest = async (req, res) => {
         createdAt: now,
         updatedAt: now,
       });
+      await updateUserByEmail(userProfile.email, {
+        currentEmployees: (userProfile.currentEmployees || 0) + 1,
+        updatedAt: now,
+      });
     } else if (existingAffiliation.status !== "active") {
       await updateAffiliationById(existingAffiliation._id.toString(), {
         employeeEmail: request.requesterEmail,
@@ -234,6 +259,10 @@ const approveRequest = async (req, res) => {
           userProfile.companyLogo || existingAffiliation.companyLogo || "",
         affiliationDate: now,
         status: "active",
+        updatedAt: now,
+      });
+      await updateUserByEmail(userProfile.email, {
+        currentEmployees: (userProfile.currentEmployees || 0) + 1,
         updatedAt: now,
       });
     }
