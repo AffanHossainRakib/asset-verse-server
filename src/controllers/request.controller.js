@@ -648,6 +648,115 @@ const returnAssignedAsset = async (req, res) => {
   }
 };
 
+const assignAssetDirectly = async (req, res) => {
+  try {
+    const userProfile = await getUserProfile(req);
+
+    if (!userProfile || userProfile.role !== "hr") {
+      return res
+        .status(403)
+        .json({ success: false, message: "HR access required." });
+    }
+
+    const { assetId, employeeEmail } = req.body;
+
+    if (!assetId || !employeeEmail) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "assetId and employeeEmail are required.",
+        });
+    }
+
+    const normalizedEmail = String(employeeEmail).toLowerCase();
+
+    // Ensure the target employee is actively affiliated with this HR's company
+    const affiliation = await findAffiliationByEmailAndCompany(
+      normalizedEmail,
+      userProfile.companyName,
+    );
+
+    if (!affiliation || affiliation.status !== "active") {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Employee is not affiliated with your company.",
+        });
+    }
+
+    const asset = await findAssetById(assetId);
+
+    if (!asset) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Asset not found." });
+    }
+
+    if (asset.companyName !== userProfile.companyName) {
+      return res
+        .status(403)
+        .json({
+          success: false,
+          message: "You can only assign assets from your company.",
+        });
+    }
+
+    if ((asset.availableQuantity || 0) <= 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Asset is not available." });
+    }
+
+    const now = new Date().toISOString();
+
+    // decrement asset availability
+    await updateAssetById(assetId, {
+      availableQuantity: (asset.availableQuantity || 0) - 1,
+      updatedAt: now,
+    });
+
+    const employeeProfile = await findUserByEmail(normalizedEmail);
+
+    const assignmentDoc = {
+      requestId: null,
+      assetId: asset._id,
+      assetName: asset.productName,
+      assetImage: asset.productImage || "",
+      assetType: asset.productType,
+      employeeEmail: normalizedEmail,
+      employeeName: employeeProfile?.name || affiliation.employeeName || "",
+      hrEmail: userProfile.email,
+      companyName: userProfile.companyName,
+      requestDate: null,
+      approvalDate: now,
+      returnDate: null,
+      assignmentDate: now,
+      status: "assigned",
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await createAssignedAsset(assignmentDoc);
+
+    return res
+      .status(201)
+      .json({
+        success: true,
+        message: "Asset assigned successfully.",
+        data: assignmentDoc,
+      });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: error?.message || "Unable to assign asset.",
+      });
+  }
+};
+
 module.exports = {
   getRequestsForCurrentUser,
   createAssetRequest,
@@ -656,4 +765,5 @@ module.exports = {
   undoRequest,
   getAssignedAssetsForCurrentUser,
   returnAssignedAsset,
+  assignAssetDirectly,
 };
