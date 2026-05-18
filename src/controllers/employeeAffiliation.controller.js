@@ -142,12 +142,15 @@ const removeEmployeeFromCompany = async (req, res) => {
 
     if (assignedAssets.length > 0) {
       const returnCountByAssetId = assignedAssets.reduce((acc, assignment) => {
-        const key = assignment.assetId?.toString?.() || String(assignment.assetId);
+        const key =
+          assignment.assetId?.toString?.() || String(assignment.assetId);
         acc[key] = (acc[key] || 0) + 1;
         return acc;
       }, {});
 
-      for (const [assetId, incrementBy] of Object.entries(returnCountByAssetId)) {
+      for (const [assetId, incrementBy] of Object.entries(
+        returnCountByAssetId,
+      )) {
         const asset = await findAssetById(assetId);
 
         if (!asset) {
