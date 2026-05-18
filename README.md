@@ -1,39 +1,58 @@
 # AssetVerse Backend
 
-AssetVerse backend is an Express MVC API for the B2B asset management platform. It handles authentication, asset inventory, employee affiliation, asset requests, subscriptions, and payment flow.
+Project: AssetVerse (backend API)
 
-## Tech Stack
+## Purpose
 
-- Node.js
-- Express
-- MongoDB Atlas
-- Firebase Admin
-- Stripe
-- CORS
+Express API supporting the AssetVerse platform: authentication, asset inventory, employee affiliations, requests, assignments, payments, and subscription enforcement.
+
+## Live URL
+
+- Frontend: [<https://asset-verse-new.vercel.app/>](https://asset-verse-new.vercel.app/)
+
+## Key features
+
+- Firebase token validation and role-based access (HR/Employee)
+- MongoDB Atlas data models for assets, requests, assigned assets, packages, subscriptions, companies, and employee affiliations
+- Direct assignment endpoint (HR) and safe return handling that restores asset availability
+- Stripe integration for package subscriptions and payments
+
+## Core npm packages (selected)
+
+- express
+- mongodb
+- firebase-admin
 - dotenv
+- cors
+- stripe
 
-## What This API Does
+## Local setup
 
-- Verifies Firebase users and protects private routes
-- Manages company assets, employee affiliations, and asset requests
-- Supports HR package limits and subscription upgrades
-- Integrates Stripe checkout for payment and package changes
+1. Install dependencies:
 
-## Main Modules
+   cd asset-verse-server
+   npm install
 
-- `src/controllers` for business logic
-- `src/models` for MongoDB data access
-- `src/routes` for API endpoints
-- `src/middlewares` for auth and role checks
-- `src/config` for database, Firebase Admin, and Stripe setup
+2. Create `.env` from example and set values (see Environment variables):
 
-## Setup
+   cp .env.example .env
 
-- `npm install`
-- `npm run dev`
+3. Run in development:
 
-## Deployment
+   npm run dev
 
-- Vercel-ready entrypoint is exported from `index.js`
-- API routes are mounted under `/api`
-- Set `MONGODB_URI`, Firebase Admin, Stripe, and client origin env values in production
+## Environment variables (backend)
+
+- `MONGODB_URI` — Primary MongoDB connection string (required)
+- `MONGODB_URI_FALLBACK` — Optional fallback connection string for SRV DNS failures
+- `MONGODB_DNS_SERVERS` — Optional comma-separated DNS servers for SRV lookups (example: `8.8.8.8,1.1.1.1`)
+- `FB_SERVICE_KEY` — Base64-encoded Firebase service account JSON (decoded at runtime)
+- `STRIPE_SECRET_KEY` — Stripe secret key for API calls
+- `CLIENT_URL` — Frontend origin used for CORS (if unset, CORS origin defaults to allow all)
+- `PORT` — Local server port (dev only)
+- `NODE_ENV` — Environment mode (e.g. `development`, `production`)
+
+## Deployment notes
+
+- The Express `app` is exported from `index.js` so the project is Vercel friendly. Do not call `app.listen()` in production serverless functions.
+- When deploying the frontend, set the frontend `VITE_API_URL` to this API origin at build-time.
