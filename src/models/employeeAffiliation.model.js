@@ -38,10 +38,16 @@ const updateAffiliationById = async (affiliationId, updateDoc) => {
   );
 };
 
+const deleteAffiliationById = async (affiliationId) => {
+  const collection = await getEmployeeAffiliationCollection();
+  return collection.deleteOne({ _id: new ObjectId(affiliationId) });
+};
+
 module.exports = {
   createAffiliation,
   findAffiliationByEmailAndCompany,
   findAffiliationsByEmployeeEmail,
   findAffiliationsByCompany,
   updateAffiliationById,
+  deleteAffiliationById,
 };

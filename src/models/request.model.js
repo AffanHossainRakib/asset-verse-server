@@ -24,9 +24,15 @@ const updateRequestById = async (requestId, updateDoc) => {
   );
 };
 
+const updateRequests = async (query = {}, updateDoc = {}) => {
+  const requestCollection = await getRequestCollection();
+  return requestCollection.updateMany(query, { $set: updateDoc });
+};
+
 module.exports = {
   createRequest,
   findRequests,
   findRequestById,
   updateRequestById,
+  updateRequests,
 };

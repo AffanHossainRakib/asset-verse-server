@@ -1,9 +1,14 @@
 const { findUserByEmail, updateUserByEmail } = require("../models/user.model");
-const { findAssignedAssets } = require("../models/assignedAsset.model");
+const {
+  findAssignedAssets,
+  updateAssignedAssets,
+} = require("../models/assignedAsset.model");
+const { findAssetById, updateAssetById } = require("../models/asset.model");
 const {
   findAffiliationsByCompany,
-  updateAffiliationById,
+  deleteAffiliationById,
 } = require("../models/employeeAffiliation.model");
+const { updateRequests } = require("../models/request.model");
 
 const getCurrentUserProfile = async (req) => {
   const email = req.firebaseUser?.email?.toLowerCase();
@@ -128,10 +133,62 @@ const removeEmployeeFromCompany = async (req, res) => {
     }
 
     const now = new Date().toISOString();
-    await updateAffiliationById(id, {
-      status: "inactive",
-      updatedAt: now,
+
+    const assignedAssets = await findAssignedAssets({
+      companyName: userProfile.companyName,
+      employeeEmail: targetAffiliation.employeeEmail,
+      status: "assigned",
     });
+
+    if (assignedAssets.length > 0) {
+      const returnCountByAssetId = assignedAssets.reduce((acc, assignment) => {
+        const key = assignment.assetId?.toString?.() || String(assignment.assetId);
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
+
+      for (const [assetId, incrementBy] of Object.entries(returnCountByAssetId)) {
+        const asset = await findAssetById(assetId);
+
+        if (!asset) {
+          continue;
+        }
+
+        await updateAssetById(assetId, {
+          availableQuantity: (asset.availableQuantity || 0) + incrementBy,
+          updatedAt: now,
+        });
+      }
+
+      await updateAssignedAssets(
+        {
+          companyName: userProfile.companyName,
+          employeeEmail: targetAffiliation.employeeEmail,
+          status: "assigned",
+        },
+        {
+          status: "returned",
+          returnDate: now,
+          updatedAt: now,
+        },
+      );
+    }
+
+    await deleteAffiliationById(id);
+
+    await updateRequests(
+      {
+        requesterEmail: targetAffiliation.employeeEmail,
+        companyName: userProfile.companyName,
+        requestStatus: "approved",
+      },
+      {
+        removedFromCompany: true,
+        removedFromCompanyAt: now,
+        removedFromCompanyBy: userProfile.email,
+        updatedAt: now,
+      },
+    );
 
     await updateUserByEmail(userProfile.email, {
       currentEmployees: Math.max((userProfile.currentEmployees || 1) - 1, 0),

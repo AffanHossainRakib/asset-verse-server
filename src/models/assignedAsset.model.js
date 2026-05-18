@@ -32,10 +32,16 @@ const updateAssignedAssetById = async (id, updateDoc) => {
   );
 };
 
+const updateAssignedAssets = async (query = {}, updateDoc = {}) => {
+  const assignedAssetCollection = await getAssignedAssetCollection();
+  return assignedAssetCollection.updateMany(query, { $set: updateDoc });
+};
+
 module.exports = {
   createAssignedAsset,
   deleteAssignedAssets,
   findAssignedAssets,
   findAssignedAssetById,
   updateAssignedAssetById,
+  updateAssignedAssets,
 };
