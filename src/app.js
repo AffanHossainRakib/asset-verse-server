@@ -9,6 +9,7 @@ const subscriptionRoutes = require("./routes/subscription.route");
 const employeeAffiliationRoutes = require("./routes/employeeAffiliation.route");
 const paymentRoutes = require("./routes/payment.route");
 const myTeamRoutes = require("./routes/myTeam.route");
+const contactRoutes = require("./routes/contact.route");
 
 const app = express();
 
@@ -28,5 +29,6 @@ app.use("/api/subscriptions", subscriptionRoutes);
 app.use("/api/employee-affiliations", employeeAffiliationRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/my-team", myTeamRoutes);
+app.use("/api/contacts", contactRoutes);
 
 module.exports = app;

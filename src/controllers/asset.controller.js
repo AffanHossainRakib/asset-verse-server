@@ -1,12 +1,105 @@
+const { ObjectId } = require("mongodb");
 const { findUserByEmail } = require("../models/user.model");
 const {
   createAsset,
   findAssetsByCompany,
   findAvailableAssets,
+  findPublicAssets,
+  findRelatedAssets,
+  getDistinctProductTypes,
   findAssetById,
   updateAssetById,
   deleteAssetById,
 } = require("../models/asset.model");
+
+const MAX_PUBLIC_PAGE_SIZE = 48;
+
+// Public catalog: search + filters + sorting + pagination (no auth required)
+const getPublicAssets = async (req, res) => {
+  try {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const requestedLimit = Number(req.query.limit) || 12;
+    const limit = Math.min(Math.max(1, requestedLimit), MAX_PUBLIC_PAGE_SIZE);
+    const search = String(req.query.search || "").trim();
+    const productType = String(req.query.productType || "").trim();
+    const availability = String(req.query.availability || "").trim();
+    const sort = String(req.query.sort || "newest").trim();
+
+    const { data, total } = await findPublicAssets({
+      search,
+      productType,
+      availability,
+      sort,
+      skip: (page - 1) * limit,
+      limit,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error?.message || "Unable to fetch assets.",
+    });
+  }
+};
+
+// Public filter metadata (distinct product types)
+const getPublicAssetTypes = async (req, res) => {
+  try {
+    const types = await getDistinctProductTypes();
+    return res.status(200).json({
+      success: true,
+      data: types.filter(Boolean).sort(),
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error?.message || "Unable to fetch asset types.",
+    });
+  }
+};
+
+// Public details page data (asset + related assets)
+const getPublicAssetById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid asset id.",
+      });
+    }
+
+    const asset = await findAssetById(id);
+
+    if (!asset) {
+      return res.status(404).json({
+        success: false,
+        message: "Asset not found.",
+      });
+    }
+
+    const related = await findRelatedAssets(asset, 4);
+
+    return res.status(200).json({
+      success: true,
+      data: { asset, related },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error?.message || "Unable to fetch asset details.",
+    });
+  }
+};
 
 const getHrProfile = async (req) => {
   const email = req.firebaseUser?.email?.toLowerCase();
@@ -287,6 +380,9 @@ const deleteAsset = async (req, res) => {
 };
 
 module.exports = {
+  getPublicAssets,
+  getPublicAssetTypes,
+  getPublicAssetById,
   getAssets,
   createNewAsset,
   updateAsset,

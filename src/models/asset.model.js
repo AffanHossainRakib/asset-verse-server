@@ -41,6 +41,77 @@ const findAvailableAssets = async (options = {}) => {
   return { data, total };
 };
 
+const PUBLIC_SORT_FIELDS = {
+  newest: { createdAt: -1 },
+  oldest: { createdAt: 1 },
+  "name-asc": { productName: 1 },
+  "name-desc": { productName: -1 },
+  "quantity-desc": { availableQuantity: -1 },
+  "quantity-asc": { availableQuantity: 1 },
+};
+
+const findPublicAssets = async (options = {}) => {
+  const {
+    search,
+    productType,
+    availability,
+    sort = "newest",
+    skip = 0,
+    limit = 12,
+  } = options;
+  const assetCollection = await getAssetCollection();
+
+  const filter = { status: { $ne: "archived" } };
+
+  if (productType) {
+    filter.productType = productType;
+  }
+
+  if (availability === "available") {
+    filter.availableQuantity = { $gt: 0 };
+  } else if (availability === "unavailable") {
+    filter.availableQuantity = { $lte: 0 };
+  }
+
+  if (search) {
+    const q = new RegExp(String(search).trim(), "i");
+    filter.$or = [{ productName: q }, { productType: q }, { companyName: q }];
+  }
+
+  const total = await assetCollection.countDocuments(filter);
+  const sortSpec = PUBLIC_SORT_FIELDS[sort] || PUBLIC_SORT_FIELDS.newest;
+
+  const data = await assetCollection
+    .find(filter)
+    .sort(sortSpec)
+    .skip(skip > 0 ? skip : 0)
+    .limit(limit > 0 ? limit : 12)
+    .toArray();
+
+  return { data, total };
+};
+
+const findRelatedAssets = async (asset, limit = 4) => {
+  const assetCollection = await getAssetCollection();
+
+  return assetCollection
+    .find({
+      _id: { $ne: asset._id },
+      $or: [
+        { productType: asset.productType },
+        { companyName: asset.companyName },
+      ],
+    })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .toArray();
+};
+
+const getDistinctProductTypes = async () => {
+  const assetCollection = await getAssetCollection();
+  return assetCollection.distinct("productType");
+};
+
 const findAssetById = async (assetId) => {
   const assetCollection = await getAssetCollection();
   return assetCollection.findOne({ _id: new ObjectId(assetId) });
@@ -74,6 +145,9 @@ module.exports = {
   createAsset,
   findAssetsByCompany,
   findAvailableAssets,
+  findPublicAssets,
+  findRelatedAssets,
+  getDistinctProductTypes,
   findAssetById,
   findAssetsByIds,
   updateAssetById,
