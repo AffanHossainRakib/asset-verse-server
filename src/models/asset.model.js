@@ -15,13 +15,25 @@ const findAssetsByCompany = async (companyName) => {
 };
 
 const findAvailableAssets = async (options = {}) => {
-  const { companyName, search, skip = 0, limit = 0 } = options;
+  const {
+    companyName,
+    search,
+    productType,
+    sort,
+    skip = 0,
+    limit = 0,
+    includeUnavailable = false,
+  } = options;
   const assetCollection = await getAssetCollection();
 
-  const filter = { availableQuantity: { $gt: 0 } };
+  const filter = includeUnavailable ? {} : { availableQuantity: { $gt: 0 } };
 
   if (companyName) {
     filter.companyName = companyName;
+  }
+
+  if (productType) {
+    filter.productType = productType;
   }
 
   if (search) {
@@ -31,7 +43,10 @@ const findAvailableAssets = async (options = {}) => {
 
   const total = await assetCollection.countDocuments(filter);
 
-  let cursor = assetCollection.find(filter).sort({ createdAt: -1 });
+  const sortSpec =
+    (sort && PUBLIC_SORT_FIELDS[sort]) || { createdAt: -1 };
+
+  let cursor = assetCollection.find(filter).sort(sortSpec);
 
   if (skip && skip > 0) cursor = cursor.skip(skip);
   if (limit && limit > 0) cursor = cursor.limit(limit);

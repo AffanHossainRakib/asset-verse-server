@@ -10,6 +10,8 @@ const employeeAffiliationRoutes = require("./routes/employeeAffiliation.route");
 const paymentRoutes = require("./routes/payment.route");
 const myTeamRoutes = require("./routes/myTeam.route");
 const contactRoutes = require("./routes/contact.route");
+const statsRoutes = require("./routes/stats.route");
+const { notFoundHandler, errorHandler } = require("./middlewares/errorHandler");
 
 const app = express();
 
@@ -30,5 +32,10 @@ app.use("/api/employee-affiliations", employeeAffiliationRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/my-team", myTeamRoutes);
 app.use("/api/contacts", contactRoutes);
+app.use("/api/stats", statsRoutes);
+
+// Centralized 404 + error handling (must stay last)
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 module.exports = app;

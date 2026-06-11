@@ -140,10 +140,16 @@ const getAssets = async (req, res) => {
     const limit = Number(req.query.limit) || 0; // 0 means no limit
     const search = req.query.search || "";
     const productType = req.query.productType || "";
+    const sort = req.query.sort || "";
     const companyQuery = req.query.companyName || null;
 
-    // If HR and no paging/search params provided, return full company assets
-    const noPaging = !req.query.page && !req.query.limit && !req.query.search;
+    // If HR and no paging/search/filter params provided, return full company assets
+    const noPaging =
+      !req.query.page &&
+      !req.query.limit &&
+      !req.query.search &&
+      !req.query.productType &&
+      !req.query.sort;
     if (profile.role === "hr" && noPaging) {
       const assets = await findAssetsByCompany(profile.companyName);
 
@@ -162,9 +168,13 @@ const getAssets = async (req, res) => {
 
     const { data, total } = await findAvailableAssets({
       companyName: filterCompany,
-      search: search || productType,
+      search,
+      productType,
+      sort,
       skip,
       limit: pageSize,
+      // HR sees all company assets (incl. out of stock); employees only available ones
+      includeUnavailable: profile.role === "hr",
     });
 
     return res.status(200).json({
