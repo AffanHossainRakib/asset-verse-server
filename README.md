@@ -6,9 +6,10 @@ Project: AssetVerse (backend API)
 
 Express API supporting the AssetVerse platform: authentication, asset inventory, employee affiliations, requests, assignments, payments, and subscription enforcement.
 
-## Live URL
+## Live URLs
 
-- Frontend: [<https://asset-verse-new.vercel.app/>](https://asset-verse-new.vercel.app/)
+- Backend API: [https://asset-verse-server-ten.vercel.app/](https://asset-verse-server-ten.vercel.app/)
+- Frontend: [https://asset-verse-new.vercel.app/](https://asset-verse-new.vercel.app/)
 
 ## Key features
 

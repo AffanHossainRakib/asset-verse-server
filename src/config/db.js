@@ -32,9 +32,11 @@ const configureDnsForAtlasSrv = () => {
   }
 
   dns.setServers(dnsServers);
-  console.log(
-    `Using DNS servers for MongoDB SRV lookup: ${dnsServers.join(", ")}`,
-  );
+  if (process.env.NODE_ENV !== "production") {
+    console.log(
+      `Using DNS servers for MongoDB SRV lookup: ${dnsServers.join(", ")}`,
+    );
+  }
 };
 
 let client;
@@ -87,9 +89,11 @@ const initCollections = async () => {
         throw error;
       }
 
-      console.warn(
-        "SRV DNS lookup failed with ECONNREFUSED. Retrying with MONGODB_URI_FALLBACK.",
-      );
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(
+          "SRV DNS lookup failed with ECONNREFUSED. Retrying with MONGODB_URI_FALLBACK.",
+        );
+      }
 
       client = buildClient(fallbackUri);
       await client.connect();

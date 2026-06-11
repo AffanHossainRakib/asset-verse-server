@@ -14,10 +14,14 @@ const getPublicStats = async (req, res) => {
         getRequestCollection(),
       ]);
 
-    const [totalAssets, companyNames, totalUsers, totalRequests, assetUnits] =
+    // NOTE: collection.distinct() is not allowed under serverApi strict mode,
+    // so distinct company names are computed via aggregation instead.
+    const [totalAssets, companyGroups, totalUsers, totalRequests, assetUnits] =
       await Promise.all([
         assetCollection.countDocuments({}),
-        assetCollection.distinct("companyName"),
+        assetCollection
+          .aggregate([{ $group: { _id: "$companyName" } }])
+          .toArray(),
         userCollection.countDocuments({}),
         requestCollection.countDocuments({}),
         assetCollection
@@ -31,6 +35,8 @@ const getPublicStats = async (req, res) => {
           ])
           .toArray(),
       ]);
+
+    const companyNames = companyGroups.map((group) => group._id);
 
     return res.status(200).json({
       success: true,

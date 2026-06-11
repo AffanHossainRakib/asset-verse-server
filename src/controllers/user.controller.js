@@ -107,10 +107,12 @@ const createUser = async (req, res) => {
       try {
         await admin.auth().deleteUser(decodedToken.uid);
       } catch (cleanupError) {
-        console.warn(
-          "Failed to clean up Firebase user after registration error.",
-          cleanupError,
-        );
+        if (process.env.NODE_ENV !== "production") {
+          console.warn(
+            "Failed to clean up Firebase user after registration error.",
+            cleanupError,
+          );
+        }
       }
     }
 

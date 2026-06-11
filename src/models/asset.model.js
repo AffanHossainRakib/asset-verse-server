@@ -124,7 +124,11 @@ const findRelatedAssets = async (asset, limit = 4) => {
 
 const getDistinctProductTypes = async () => {
   const assetCollection = await getAssetCollection();
-  return assetCollection.distinct("productType");
+  // distinct() is blocked by serverApi strict mode; use aggregation instead
+  const groups = await assetCollection
+    .aggregate([{ $group: { _id: "$productType" } }])
+    .toArray();
+  return groups.map((group) => group._id).filter(Boolean);
 };
 
 const findAssetById = async (assetId) => {

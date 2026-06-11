@@ -16,11 +16,13 @@ const verifyFirebaseToken = async (req, res, next) => {
     req.firebaseUser = await admin.auth().verifyIdToken(idToken);
     return next();
   } catch (error) {
-    console.warn(
-      "Firebase token verification failed:",
-      error.code,
-      error.message,
-    );
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(
+        "Firebase token verification failed:",
+        error.code,
+        error.message,
+      );
+    }
 
     const message =
       error.code === "auth/id-token-expired"
